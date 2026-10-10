@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "e2e:seed-outbox": "tsx scripts/seed-outbox-e2e.ts",
+    "e2e:check-outbox": "tsx scripts/test-outbox-e2e.ts"
   },
   "keywords": [],
   "author": "",
