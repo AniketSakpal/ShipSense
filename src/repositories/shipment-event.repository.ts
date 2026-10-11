@@ -7,7 +7,8 @@ import {
 import {
   getNotificationTime,
 } from "../services/notification-schedule.service";
-
+import { ndrWebhookService } from "../services/ndr/ndr-webhook.service";
+import type { NdrFailureReason } from "../types/ndr/ndr.types";
 
 
 function getAwb(
@@ -121,11 +122,20 @@ async function processLockedEvent(
     current_status: string;
     last_status_event_id: string | null;
      customer_phone: string;
+      payment_mode: "COD" | "PREPAID";
+  cod_amount_paise: string | number;
   }>(
-    `SELECT id, current_status, last_status_event_id, customer_phone
-       FROM shipments
-      WHERE courier_id = $1 AND awb = $2
-      FOR UPDATE`,
+    `SELECT
+      id,
+      current_status,
+      last_status_event_id,
+      customer_phone,
+      payment_mode,
+      cod_amount_paise
+   FROM shipments
+   WHERE courier_id = $1
+     AND awb = $2
+   FOR UPDATE`,
     [event.courier_id, awb]
   );
 
@@ -319,6 +329,37 @@ if (!informational && timelineEventId && shipment) {
     });
   }
 }
+
+if (
+    !informational &&
+    mappedStatus === "DELIVERY_FAILED" &&
+    timelineEventId &&
+    shipment
+  ) {
+    const attemptNo = await resolveAttemptNo(
+      client,
+      shipment.id,
+      timelineEventId,
+      mappedStatus
+    );
+
+    const failureReason = normalizeDeliveryFailureReason(
+      event.courier_code,
+      event.payload
+    ) as NdrFailureReason;
+
+    await ndrWebhookService.processDeliveryFailure(
+      client,
+      shipment.id,
+      {
+        awb,
+        attemptNo,
+        failureReason,
+        paymentMode: shipment.payment_mode,
+        codAmountPaise: Number(shipment.cod_amount_paise),
+      }
+    );
+  }
 
   await client.query(
     `UPDATE webhook_events

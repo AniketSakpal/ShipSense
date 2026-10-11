@@ -10,7 +10,7 @@ export async function handleSwiftShipWebhook(
   next: NextFunction,
 ): Promise<void> {
   try {
-    console.log("Received SwiftShip webhook:", req.body);
+    
     const result = await ingestSwiftShipWebhook({
       rawBody: req.body,
       signature: req.header("X-SwiftShip-Signature"),
